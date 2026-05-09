@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Генератор постов для товаров</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}" />
+  </head>
+  <body>
+    <main class="page">
+      <section class="card">
+        <h1>Генератор постов для товаров</h1>
+        <p class="subtitle">Вставьте ссылку на товар, и нейросеть подготовит готовый пост.</p>
+
+        <form method="post" class="form">
+          <label>
+            Ссылка на товар
+            <input type="url" name="product_url" placeholder="https://example.com/product/123" value="{{ product_url }}" required />
+          </label>
+
+          <h2>Настройки поста</h2>
+          <div class="settings-grid">
+            <label>
+              Тон
+              <select name="tone">
+                <option value="friendly" {% if selected.tone == 'friendly' %}selected{% endif %}>Дружелюбный</option>
+                <option value="expert" {% if selected.tone == 'expert' %}selected{% endif %}>Экспертный</option>
+                <option value="energetic" {% if selected.tone == 'energetic' %}selected{% endif %}>Энергичный</option>
+              </select>
+            </label>
+
+            <label>
+              Длина
+              <select name="length">
+                <option value="short" {% if selected.length == 'short' %}selected{% endif %}>Короткий</option>
+                <option value="medium" {% if selected.length == 'medium' %}selected{% endif %}>Средний</option>
+                <option value="long" {% if selected.length == 'long' %}selected{% endif %}>Подробный</option>
+              </select>
+            </label>
+
+            <label>
+              Кол-во эмодзи
+              <select name="emoji">
+                <option value="low" {% if selected.emoji == 'low' %}selected{% endif %}>Мало</option>
+                <option value="medium" {% if selected.emoji == 'medium' %}selected{% endif %}>Средне</option>
+                <option value="high" {% if selected.emoji == 'high' %}selected{% endif %}>Много</option>
+              </select>
+            </label>
+
+            <label>
+              Стиль CTA
+              <select name="cta">
+                <option value="soft" {% if selected.cta == 'soft' %}selected{% endif %}>Мягкий</option>
+                <option value="direct" {% if selected.cta == 'direct' %}selected{% endif %}>Прямой</option>
+                <option value="urgent" {% if selected.cta == 'urgent' %}selected{% endif %}>Срочный</option>
+              </select>
+            </label>
+
+            <label>
+              Хештеги
+              <select name="hashtags">
+                <option value="classic" {% if selected.hashtags == 'classic' %}selected{% endif %}>Классические</option>
+                <option value="sales" {% if selected.hashtags == 'sales' %}selected{% endif %}>Продающие</option>
+                <option value="brand" {% if selected.hashtags == 'brand' %}selected{% endif %}>Имиджевые</option>
+              </select>
+            </label>
+
+            <label>
+              Модель
+              <select name="model">
+                {% for model_key, model_name in model_options.items() %}
+                <option value="{{ model_key }}" {% if selected.model == model_key %}selected{% endif %}>{{ model_name }}</option>
+                {% endfor %}
+              </select>
+            </label>
+
+          </div>
+
+          <button type="submit" class="btn primary" name="action" value="generate">Сформировать пост</button>
+        </form>
+
+        {% if error_message %}
+        <p class="error">{{ error_message }}</p>
+        {% endif %}
+        {% if status_message %}
+        <p class="status">{{ status_message }}</p>
+        {% endif %}
+
+        <section class="result-block">
+          <div class="result-head">
+            <h2>Готовый пост</h2>
+            <div class="head-actions">
+              <button type="button" class="icon-btn" id="editButton" title="Редактировать пост">✏️</button>
+              <button type="button" class="btn" id="copyButton">Скопировать пост</button>
+            </div>
+          </div>
+          <form method="post" class="post-actions" id="postActionsForm">
+            <textarea id="postText" name="post_text" rows="11" readonly>{{ post_text }}</textarea>
+            <input type="hidden" name="force_action" id="actionField" value="" />
+            <input type="hidden" name="product_url" value="{{ product_url }}" />
+            <input type="hidden" name="tone" value="{{ selected.tone }}" />
+            <input type="hidden" name="length" value="{{ selected.length }}" />
+            <input type="hidden" name="emoji" value="{{ selected.emoji }}" />
+            <input type="hidden" name="cta" value="{{ selected.cta }}" />
+            <input type="hidden" name="hashtags" value="{{ selected.hashtags }}" />
+            <input type="hidden" name="model" value="{{ selected.model }}" />
+
+            <div class="post-buttons">
+              <button type="submit" class="btn primary" name="action" value="publish">Опубликовать пост</button>
+              <button type="submit" class="btn" name="action" value="favorite">В избранное</button>
+            </div>
+
+            <div class="schedule-line">
+              <label>
+                Время отложенной публикации
+                <input type="datetime-local" name="publish_time" />
+              </label>
+              <button type="submit" class="btn" name="action" value="schedule">Запланировать</button>
+            </div>
+          </form>
+          <p id="copyMessage" class="copy-message">Пост скопирован</p>
+        </section>
+
+        <section class="result-block">
+          <h2>Избранное</h2>
+          {% if favorites %}
+            {% for item in favorites %}
+            <div class="saved-item">
+              <div class="saved-date">{{ item.saved_at }}</div>
+              <div class="saved-text">{{ item.text }}</div>
+            </div>
+            {% endfor %}
+          {% else %}
+          <p class="subtitle">Пока нет сохраненных постов.</p>
+          {% endif %}
+        </section>
+
+        <section class="result-block">
+          <h2>Отложенные посты</h2>
+          {% if scheduled_posts %}
+            {% for item in scheduled_posts %}
+            <div class="saved-item">
+              <div class="saved-date">Публикация: {{ item.publish_time.replace('T', ' ') }}</div>
+              <div class="saved-text">{{ item.text }}</div>
+            </div>
+            {% endfor %}
+          {% else %}
+          <p class="subtitle">Пока нет отложенных постов.</p>
+          {% endif %}
+        </section>
+      </section>
+    </main>
+
+    <script>
+      const copyButton = document.getElementById('copyButton');
+      const editButton = document.getElementById('editButton');
+      const postActionsForm = document.getElementById('postActionsForm');
+      const actionField = document.getElementById('actionField');
+      const postText = document.getElementById('postText');
+      const copyMessage = document.getElementById('copyMessage');
+
+      editButton.addEventListener('click', () => {
+        const hasText = postText.value.trim().length > 0;
+        if (!hasText) {
+          return;
+        }
+
+        const isReadonly = postText.hasAttribute('readonly');
+        if (isReadonly) {
+          postText.removeAttribute('readonly');
+          postText.focus();
+          editButton.classList.add('active');
+          editButton.textContent = '💾';
+          editButton.title = 'Сохранить правки';
+        } else {
+          actionField.value = 'save_edit';
+          postActionsForm.submit();
+        }
+      });
+
+      copyButton.addEventListener('click', async () => {
+        const text = postText.value.trim();
+        if (!text) {
+          return;
+        }
+
+        await navigator.clipboard.writeText(text);
+        copyMessage.classList.add('visible');
+        setTimeout(() => copyMessage.classList.remove('visible'), 1800);
+      });
+    </script>
+  </body>
+</html>
